@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '../../store'
+import { pausePracticeTimer } from '../../lib/runMode'
 import type { ColorTheme, FontSize } from '../../types'
 
 const FONT_OPTIONS: { value: FontSize; label: string }[] = [
@@ -26,6 +27,17 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [onClose])
+
+  const exitToList = () => {
+    const ok = window.confirm('Return to the test list? Your current progress will be kept so you can resume later.')
+    if (!ok) return
+    pausePracticeTimer()
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    // Do not call exitToHome(): that action intentionally clears the saved session.
+    // Switching only the view preserves the autosaved in-progress attempt.
+    useStore.setState({ view: 'home' })
+    onClose()
+  }
 
   return (
     <div
@@ -77,6 +89,17 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
         />
         Show timer
       </label>
+
+      <div className="border-t mt-3 pt-3" style={{ borderColor: 'var(--ielts-border)' }}>
+        <button
+          className="w-full border px-3 py-2 text-left font-semibold"
+          style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)', color: 'var(--ielts-fg)' }}
+          onClick={exitToList}
+        >
+          Exit to test list
+          <span className="block text-xs font-normal opacity-60 mt-0.5">Progress will be saved for Resume.</span>
+        </button>
+      </div>
     </div>
   )
 }
