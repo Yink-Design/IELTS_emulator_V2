@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "title": "IELTS 6.5 Study Plan Question Bank",
+  "tests": [
+    {
+      "id": "cam18-t1",
+      "title": "Cambridge IELTS 18 — Test 1",
+      "path": "tests/c18/t1.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-08-17",
+      "source": "user-provided Cambridge IELTS 18"
+    },
+    {
+      "id": "cam18-t2",
+      "title": "Cambridge IELTS 18 — Test 2",
+      "path": "tests/c18/t2.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-08-22",
+      "source": "user-provided Cambridge IELTS 18"
+    },
+    {
+      "id": "cam18-t3",
+      "title": "Cambridge IELTS 18 — Test 3",
+      "path": "tests/c18/t3.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-08-24",
+      "source": "user-provided Cambridge IELTS 18"
+    },
+    {
+      "id": "cam18-t4",
+      "title": "Cambridge IELTS 18 — Test 4",
+      "path": "tests/c18/t4.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-08-26",
+      "source": "user-provided Cambridge IELTS 18"
+    },
+    {
+      "id": "cam19-t1",
+      "title": "Cambridge IELTS 19 — Test 1",
+      "path": "tests/c19/t1.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-08-31",
+      "source": "user-provided Cambridge IELTS 19"
+    },
+    {
+      "id": "cam19-t2",
+      "title": "Cambridge IELTS 19 — Test 2",
+      "path": "tests/c19/t2.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-04",
+      "source": "user-provided Cambridge IELTS 19"
+    },
+    {
+      "id": "cam19-t3",
+      "title": "Cambridge IELTS 19 — Test 3",
+      "path": "tests/c19/t3.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-07",
+      "source": "user-provided Cambridge IELTS 19"
+    },
+    {
+      "id": "cam19-t4",
+      "title": "Cambridge IELTS 19 — Test 4",
+      "path": "tests/c19/t4.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-11",
+      "source": "user-provided Cambridge IELTS 19"
+    },
+    {
+      "id": "cam20-t1",
+      "title": "Cambridge IELTS 20 — Test 1",
+      "path": "tests/c20/t1.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-14",
+      "source": "user-provided Cambridge IELTS 20"
+    },
+    {
+      "id": "cam20-t2",
+      "title": "Cambridge IELTS 20 — Test 2",
+      "path": "tests/c20/t2.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-19",
+      "source": "user-provided Cambridge IELTS 20"
+    },
+    {
+      "id": "cam20-t3",
+      "title": "Cambridge IELTS 20 — Test 3",
+      "path": "tests/c20/t3.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-23",
+      "source": "user-provided Cambridge IELTS 20"
+    },
+    {
+      "id": "cam20-t4",
+      "title": "Cambridge IELTS 20 — Test 4",
+      "path": "tests/c20/t4.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-22",
+      "source": "user-provided Cambridge IELTS 20"
+    },
+    {
+      "id": "cam21-t1",
+      "title": "Cambridge IELTS 21 — Test 1",
+      "path": "tests/c21/t1.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-26",
+      "source": "user-provided Cambridge IELTS 21"
+    },
+    {
+      "id": "cam21-t2",
+      "title": "Cambridge IELTS 21 — Test 2",
+      "path": "tests/c21/t2.json",
+      "availableModules": ["listening", "reading", "writing"],
+      "scheduledFrom": "2026-09-28",
+      "source": "user-provided Cambridge IELTS 21"
+    }
+  ]
+}
