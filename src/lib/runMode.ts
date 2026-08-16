@@ -4,6 +4,7 @@ export type RunMode = 'mock' | 'practice'
 
 const MODE_KEY = 'ielts-run-mode'
 const PRACTICE_TIMER_KEY = 'ielts-practice-timer'
+const AUDIO_PROGRESS_KEY = 'ielts-listening-progress'
 
 interface StoredPracticeTimer {
   testId: string
@@ -13,6 +14,8 @@ interface StoredPracticeTimer {
   currentSection: number
   lastTickAt: number | null
 }
+
+type ListeningProgress = Record<string, Record<string, number>>
 
 export interface PracticeTimerSnapshot {
   totalSec: number
@@ -31,6 +34,23 @@ function readTimer(): StoredPracticeTimer | null {
 function writeTimer(timer: StoredPracticeTimer) {
   try {
     localStorage.setItem(PRACTICE_TIMER_KEY, JSON.stringify(timer))
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function readListeningProgress(): ListeningProgress {
+  try {
+    const raw = localStorage.getItem(AUDIO_PROGRESS_KEY)
+    return raw ? (JSON.parse(raw) as ListeningProgress) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeListeningProgress(progress: ListeningProgress) {
+  try {
+    localStorage.setItem(AUDIO_PROGRESS_KEY, JSON.stringify(progress))
   } catch {
     /* ignore storage failures */
   }
@@ -60,12 +80,39 @@ export function getRunMode(): RunMode {
   }
 }
 
+export function clearListeningProgress(testId?: string) {
+  if (!testId) {
+    try {
+      localStorage.removeItem(AUDIO_PROGRESS_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  const progress = readListeningProgress()
+  delete progress[testId]
+  writeListeningProgress(progress)
+}
+
+export function saveListeningProgress(testId: string, part: number, seconds: number) {
+  const progress = readListeningProgress()
+  progress[testId] = progress[testId] ?? {}
+  progress[testId][String(part)] = Math.max(0, seconds)
+  writeListeningProgress(progress)
+}
+
+export function getListeningProgress(testId: string, part: number): number {
+  return readListeningProgress()[testId]?.[String(part)] ?? 0
+}
+
 export function startRunContext(testId: string, module: ModuleType, mode: RunMode) {
   try {
     localStorage.setItem(MODE_KEY, mode)
   } catch {
     /* ignore */
   }
+
+  if (module === 'listening') clearListeningProgress(testId)
 
   if (mode === 'practice') {
     writeTimer({
