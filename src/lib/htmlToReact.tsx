@@ -1,4 +1,5 @@
 import { createElement, Fragment, type ReactNode } from 'react'
+import { asset } from './asset'
 
 // ---------------------------------------------------------------------------
 // Converts a trusted HTML string into a React element tree, replacing `{{n}}`
@@ -60,6 +61,10 @@ function convert(node: Node, gapRender: (n: number) => ReactNode, keyer: () => n
     for (const attr of Array.from(el.attributes)) {
       if (attr.name === 'style') {
         props.style = styleToObject(attr.value)
+      } else if (tag === 'img' && attr.name.toLowerCase() === 'src') {
+        // Inline completion layouts may contain diagrams/tables as images.
+        // Resolve relative app assets while preserving http/data/blob sources.
+        props.src = asset(attr.value)
       } else {
         props[ATTR_MAP[attr.name] ?? attr.name] = attr.value
       }
