@@ -2,7 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feat/exam-fidelity-v1
   workflow_dispatch:
 
 permissions:
@@ -10,7 +12,6 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment, cancel in-progress runs of this workflow.
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -26,6 +27,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
