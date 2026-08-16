@@ -118,8 +118,8 @@ async function readRepoBlobUrl(config: QuestionBankConfig, path: string): Promis
     if (blob.encoding === 'base64' && blob.content) bytes = decodeBase64Bytes(blob.content)
   }
   if (!bytes) throw new Error(`Unable to download question bank asset: ${path}`)
-  const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeFor(path) }))
-  return objectUrl
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+  return URL.createObjectURL(new Blob([buffer], { type: mimeFor(path) }))
 }
 
 function bankPath(value: string): string | null {
