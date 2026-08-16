@@ -43,7 +43,7 @@ export function templateJson(): string {
     source: 'Content I legally own.',
     reading: {
       durationSec: 3600,
-      answerKey: { 1: 'TRUE', 2: ['glass', 'a glass'] },
+      answerKey: { 1: 'TRUE', 2: ['glass', 'a glass'], 3: 'valve' },
       passages: [
         {
           number: 1,
@@ -64,6 +64,14 @@ export function templateJson(): string {
               wordLimit: 'NO MORE THAN TWO WORDS',
               bodyHtml: '<p>The bottle is made of {{2}}.</p>',
               questions: [{ number: 2 }],
+            },
+            {
+              id: 'g3',
+              type: 'diagram-completion',
+              instructions: 'Label the diagram below.',
+              wordLimit: 'ONE WORD ONLY',
+              imageUrl: 'https://example.com/diagram.png',
+              questions: [{ number: 3, text: 'Part marked 3: ___' }],
             },
           ],
         },
