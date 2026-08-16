@@ -2,8 +2,43 @@ import type { IeltsTest } from '../types'
 
 const IMPORTED_KEY = 'ielts-imported-tests'
 
+export type ExternalImportProvider = 'file' | 'github'
+
+export interface ExternalImportMeta {
+  provider: ExternalImportProvider
+  repository?: string
+  path?: string
+  cambridgeBook?: number
+  cambridgeTest?: number
+  importedAt: string
+}
+
+type ExternalIeltsTest = IeltsTest & { importMeta?: ExternalImportMeta }
+
+export interface ParseTestOptions {
+  provider?: ExternalImportProvider
+  repository?: string
+  path?: string
+  cambridgeBook?: number
+  cambridgeTest?: number
+}
+
+function inferCambridgeReference(...values: Array<string | undefined>): { book?: number; test?: number } {
+  const text = values.filter(Boolean).join(' ')
+  const bookMatch = text.match(/(?:cambridge(?:\s+ielts)?|剑(?:雅)?)[\s_-]*(\d{1,2})/i)
+  const testMatch = text.match(/(?:test|t)[\s_-]*(\d{1,2})/i)
+  return {
+    book: bookMatch ? Number(bookMatch[1]) : undefined,
+    test: testMatch ? Number(testMatch[1]) : undefined,
+  }
+}
+
+export function getImportMeta(test: IeltsTest): ExternalImportMeta | undefined {
+  return (test as ExternalIeltsTest).importMeta
+}
+
 /** Parse and lightly validate a user-supplied test JSON. Throws on problems. */
-export function parseTest(json: string): IeltsTest {
+export function parseTest(json: string, options: ParseTestOptions = {}): IeltsTest {
   let obj: unknown
   try {
     obj = JSON.parse(json)
@@ -17,6 +52,19 @@ export function parseTest(json: string): IeltsTest {
     throw new Error('Test must contain at least one of: listening, reading, writing.')
   }
   if (!t.category) t.category = 'academic'
+
+  if (options.provider) {
+    const inferred = inferCambridgeReference(t.id, t.title, t.source, options.path)
+    ;(t as ExternalIeltsTest).importMeta = {
+      provider: options.provider,
+      repository: options.repository,
+      path: options.path,
+      cambridgeBook: options.cambridgeBook ?? inferred.book,
+      cambridgeTest: options.cambridgeTest ?? inferred.test,
+      importedAt: new Date().toISOString(),
+    }
+  }
+
   return t as IeltsTest
 }
 
@@ -31,7 +79,11 @@ export function loadImportedTests(): IeltsTest[] {
 }
 
 export function saveImportedTests(tests: IeltsTest[]) {
-  localStorage.setItem(IMPORTED_KEY, JSON.stringify(tests))
+  try {
+    localStorage.setItem(IMPORTED_KEY, JSON.stringify(tests))
+  } catch {
+    throw new Error('Browser storage is full. Remove some imported tests and try again.')
+  }
 }
 
 /** A minimal but complete template demonstrating the JSON format. */
