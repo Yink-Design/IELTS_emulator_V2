@@ -16,7 +16,6 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
   const answers = useStore((s) => s.answers)
   const flags = useStore((s) => s.flags)
   const navigateTo = useStore((s) => s.navigateTo)
-  const toggleFlag = useStore((s) => s.toggleFlag)
   const setActiveSection = useStore((s) => s.setActiveSection)
   const reviewMode = useStore((s) => s.reviewMode)
   const backToResults = useStore((s) => s.backToResults)
@@ -27,6 +26,7 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
 
   const flatQs = allQuestionNumbers(sections)
   const idx = flatQs.indexOf(currentQuestion)
+
   const goPrev = () => {
     if (isWriting) {
       setActiveSection(Math.max(0, activeSection - 1))
@@ -34,6 +34,7 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
       navigateTo(flatQs[idx - 1])
     }
   }
+
   const goNext = () => {
     if (isWriting) {
       setActiveSection(Math.min(sections.length - 1, activeSection + 1))
@@ -43,10 +44,7 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
   }
 
   return (
-    <footer
-      className="shrink-0 border-t flex items-stretch"
-      style={{ background: 'var(--ielts-panel)', color: 'var(--ielts-panel-fg)', borderColor: 'var(--ielts-border)' }}
-    >
+    <footer className="exam-bottom-nav shrink-0 flex items-stretch">
       <div className="flex-1 flex items-stretch overflow-x-auto ielts-scroll">
         {sections.map((sec, i) => {
           const answeredCount = sec.questions.filter((n) => isAnswered(answers[n])).length
@@ -57,11 +55,8 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
               <button
                 key={i}
                 onClick={() => setActiveSection(i)}
-                className="px-4 border-r text-sm font-bold whitespace-nowrap"
-                style={{
-                  borderColor: 'var(--ielts-border)',
-                  background: isActive ? 'var(--ielts-bg)' : 'transparent',
-                }}
+                className="exam-section-tab px-5 text-sm font-bold whitespace-nowrap"
+                data-active={isActive}
               >
                 {sec.label}
               </button>
@@ -76,26 +71,20 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
                   setActiveSection(i)
                   if (sec.questions[0] != null) navigateTo(sec.questions[0])
                 }}
-                className="px-3 border-r text-sm whitespace-nowrap flex flex-col justify-center"
-                style={{ borderColor: 'var(--ielts-border)' }}
+                className="exam-section-tab px-4 text-sm whitespace-nowrap flex flex-col justify-center"
                 title={`Go to ${sec.label}`}
               >
                 <span className="font-bold">{sec.label}</span>
-                <span className="opacity-60 text-xs">
+                <span className="exam-section-count text-xs">
                   {answeredCount} of {sec.questions.length}
                 </span>
               </button>
             )
           }
 
-          // Active section: expand all question-number buttons.
           return (
-            <div
-              key={i}
-              className="flex items-center gap-1 px-3 border-r"
-              style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)' }}
-            >
-              <span className="font-bold text-sm mr-1 whitespace-nowrap">{sec.label}</span>
+            <div key={i} className="exam-section-active flex items-center gap-2 px-3">
+              <span className="font-bold text-sm whitespace-nowrap">{sec.label}</span>
               <div className="flex items-center gap-1 py-2">
                 {sec.questions.map((n) => (
                   <button
@@ -105,11 +94,8 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
                     data-flagged={!!flags[n]}
                     data-current={n === currentQuestion}
                     onClick={() => navigateTo(n)}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      toggleFlag(n)
-                    }}
-                    title={flags[n] ? `Question ${n} (flagged — right-click to unflag)` : `Question ${n} (right-click to flag)`}
+                    title={flags[n] ? `Question ${n} — marked for review` : `Question ${n}`}
+                    aria-label={flags[n] ? `Question ${n}, marked for review` : `Question ${n}`}
                   >
                     {n}
                   </button>
@@ -120,18 +106,16 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
         })}
       </div>
 
-      <div className="flex items-center gap-2 px-3 border-l" style={{ borderColor: 'var(--ielts-border)' }}>
+      <div className="exam-nav-actions flex items-center gap-2 px-3">
         <button
           onClick={reviewMode ? backToResults : onSubmit}
-          className="px-3 py-1 text-sm font-bold border"
-          style={{ borderColor: 'var(--ielts-border)' }}
+          className="exam-submit-btn px-4 py-1.5 text-sm font-bold"
         >
           {reviewMode ? '← Results' : 'Submit'}
         </button>
         <button
           onClick={goPrev}
-          className="w-9 h-9 border text-lg leading-none disabled:opacity-30"
-          style={{ borderColor: 'var(--ielts-border)' }}
+          className="exam-arrow-btn w-9 h-9 text-lg leading-none disabled:opacity-30"
           disabled={isWriting ? activeSection === 0 : idx <= 0}
           aria-label="Previous"
         >
@@ -139,8 +123,7 @@ export default function BottomNav({ onSubmit }: { onSubmit: () => void }) {
         </button>
         <button
           onClick={goNext}
-          className="w-9 h-9 border text-lg leading-none disabled:opacity-30"
-          style={{ borderColor: 'var(--ielts-border)' }}
+          className="exam-arrow-btn w-9 h-9 text-lg leading-none disabled:opacity-30"
           disabled={isWriting ? activeSection === sections.length - 1 : idx >= flatQs.length - 1}
           aria-label="Next"
         >
