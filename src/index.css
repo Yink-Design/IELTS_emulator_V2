@@ -1,65 +1,61 @@
 @import "tailwindcss";
 
-/*
-  IELTS on-computer chrome.
-  The real test uses Arial/Helvetica, black-on-white by default, with two
-  alternate high-contrast colour themes and three font sizes selectable from
-  the settings menu. We model those with CSS variables on the root element.
-*/
-
 :root {
   --ielts-bg: #ffffff;
-  --ielts-fg: #262626;
-  --ielts-panel: #f3f4f6;
-  --ielts-panel-fg: #262626;
-  --ielts-border: #d1d5db;
-  --ielts-accent: #1a73e8;
+  --ielts-fg: #1c1c1c;
+  --ielts-panel: #f2f2f2;
+  --ielts-panel-fg: #1c1c1c;
+  --ielts-border: #b9b9b9;
+  --ielts-border-soft: #dddddd;
+  --ielts-accent: #005c8a;
   --ielts-accent-fg: #ffffff;
-  --ielts-flag: #e8a33d;
-  --ielts-highlight: #ffe14d;
-  --ielts-hl-yellow: #ffe14d;
-  --ielts-hl-green: #9ae6b4;
-  --ielts-hl-pink: #fbb6ce;
-  --ielts-hl-preview: #c4b5fd;
+  --ielts-flag: #e8a020;
+  --ielts-highlight: #ffe86b;
+  --ielts-hl-yellow: #ffe86b;
+  --ielts-hl-green: #bfe3c2;
+  --ielts-hl-pink: #f2c6d6;
+  --ielts-hl-preview: #c8ddea;
   --ielts-hl-fg: #000;
-  --ielts-link: #1a4fa0;
+  --ielts-link: #005c8a;
   --ielts-font-scale: 1;
 }
 
-/* Alternate colour themes (settings menu) */
 html[data-theme="white-on-black"] {
-  --ielts-bg: #000000;
-  --ielts-fg: #ffffff;
-  --ielts-panel: #1a1a1a;
-  --ielts-panel-fg: #ffffff;
-  --ielts-border: #4d4d4d;
-  --ielts-accent: #3b82f6;
-  --ielts-highlight: #6b5b00;
-  --ielts-hl-yellow: #6b5b00;
-  --ielts-hl-green: #1f5132;
+  --ielts-bg: #1a1a1a;
+  --ielts-fg: #f5f5f5;
+  --ielts-panel: #2b2b2b;
+  --ielts-panel-fg: #f5f5f5;
+  --ielts-border: #5c5c5c;
+  --ielts-border-soft: #3a3a3a;
+  --ielts-accent: #7fc4ea;
+  --ielts-accent-fg: #12222b;
+  --ielts-highlight: #5c5320;
+  --ielts-hl-yellow: #5c5320;
+  --ielts-hl-green: #26482a;
   --ielts-hl-pink: #6b2747;
-  --ielts-hl-preview: #5b4b8a;
+  --ielts-hl-preview: #36556a;
   --ielts-hl-fg: #fff;
-  --ielts-link: #7db1ff;
+  --ielts-link: #7fc4ea;
 }
+
 html[data-theme="yellow-on-black"] {
-  --ielts-bg: #000000;
-  --ielts-fg: #ffff00;
-  --ielts-panel: #1a1a1a;
-  --ielts-panel-fg: #ffff00;
-  --ielts-border: #5c5c00;
-  --ielts-accent: #d4af00;
-  --ielts-accent-fg: #000000;
-  --ielts-highlight: #5c5c00;
-  --ielts-hl-yellow: #5c5c00;
-  --ielts-hl-green: #1f5132;
+  --ielts-bg: #1a1a1a;
+  --ielts-fg: #ffe95c;
+  --ielts-panel: #2b2b2b;
+  --ielts-panel-fg: #ffe95c;
+  --ielts-border: #6a6a4a;
+  --ielts-border-soft: #3d3d33;
+  --ielts-accent: #ffe95c;
+  --ielts-accent-fg: #1a1a1a;
+  --ielts-highlight: #7a6a00;
+  --ielts-hl-yellow: #7a6a00;
+  --ielts-hl-green: #2f5133;
   --ielts-hl-pink: #6b2747;
-  --ielts-hl-preview: #5b4b8a;
+  --ielts-hl-preview: #5c5c37;
   --ielts-hl-fg: #fff;
   --ielts-link: #ffff66;
 }
 
-/* Font size scale (settings menu) */
 html[data-font="standard"] { --ielts-font-scale: 1; }
 html[data-font="large"]    { --ielts-font-scale: 1.2; }
 html[data-font="xlarge"]   { --ielts-font-scale: 1.45; }
@@ -76,13 +72,106 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Content text obeys the chosen font scale; chrome (bars) stays fixed. */
 .ielts-scale {
   font-size: calc(1rem * var(--ielts-font-scale));
   line-height: 1.55;
 }
 
-/* Text-selection highlight used by the Reading highlighter */
+/* Exam chrome */
+.exam-topbar {
+  position: relative;
+  height: 46px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ielts-border);
+  background: var(--ielts-panel);
+  color: var(--ielts-panel-fg);
+  font-size: 13px;
+}
+.exam-candidate { gap: 12px; }
+.exam-brand { font-size: 13px; }
+.exam-candidate-meta,
+.exam-module {
+  padding-left: 12px;
+  border-left: 1px solid var(--ielts-border);
+  opacity: .8;
+}
+.exam-module { font-weight: 700; opacity: 1; }
+.exam-volume {
+  padding-right: 10px;
+  border-right: 1px solid var(--ielts-border);
+}
+.exam-volume input[type="range"] { width: 92px; accent-color: var(--ielts-accent); }
+.exam-timer-group { gap: 4px; }
+.exam-timer {
+  display: inline-block;
+  min-width: 74px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.exam-timer[data-low="true"] { color: #c0392b; }
+.exam-tool-btn {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.exam-tool-btn:hover {
+  border-color: var(--ielts-border);
+  background: color-mix(in srgb, var(--ielts-fg) 7%, transparent);
+}
+.exam-time-warning {
+  position: fixed;
+  z-index: 80;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 18px;
+  border: 1px solid #d3a44c;
+  background: #fff8dd;
+  color: #6f5200;
+  box-shadow: 0 2px 8px rgba(0,0,0,.14);
+  font-weight: 700;
+}
+
+.exam-bottom-nav {
+  min-height: 58px;
+  border-top: 1px solid var(--ielts-border);
+  background: var(--ielts-panel);
+  color: var(--ielts-panel-fg);
+}
+.exam-section-tab {
+  border: 0;
+  border-right: 1px solid var(--ielts-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.exam-section-tab:hover { background: color-mix(in srgb, var(--ielts-fg) 6%, transparent); }
+.exam-section-tab[data-active="true"] { background: var(--ielts-bg); }
+.exam-section-count { opacity: .62; margin-top: 1px; }
+.exam-section-active {
+  border-right: 1px solid var(--ielts-border);
+  background: var(--ielts-bg);
+}
+.exam-nav-actions { border-left: 1px solid var(--ielts-border); }
+.exam-submit-btn,
+.exam-arrow-btn {
+  border: 1px solid var(--ielts-border);
+  border-radius: 2px;
+  background: var(--ielts-bg);
+  color: var(--ielts-fg);
+  cursor: pointer;
+}
+.exam-submit-btn:hover,
+.exam-arrow-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--ielts-fg) 7%, var(--ielts-bg)); }
+
+/* Reading text tools */
 .ielts-hl {
   background: var(--ielts-hl-yellow);
   color: var(--ielts-hl-fg);
@@ -90,21 +179,12 @@ body {
 }
 .ielts-hl[data-color="green"] { background: var(--ielts-hl-green); }
 .ielts-hl[data-color="pink"] { background: var(--ielts-hl-pink); }
-
-/* Transient preview painted while the colour menu is open. Distinct (indigo)
- * from every pen colour, with a dashed outline, so it clearly reads as
- * "about to be highlighted". Removed when a colour is chosen or the menu
- * is dismissed. */
 .ielts-hl-preview {
   background: var(--ielts-hl-preview);
   color: var(--ielts-hl-fg);
   outline: 1px dashed currentColor;
   border-radius: 2px;
 }
-
-/* Evidence flash: the passage sentence that justifies an answer, shown when a
- * question's "In passage" affordance is clicked in review mode. Accent-tinted
- * with a ring so it stands apart from the user's own (yellow/green/pink) pens. */
 .ielts-evidence {
   background: color-mix(in srgb, var(--ielts-accent) 28%, transparent);
   outline: 2px solid var(--ielts-accent);
@@ -115,17 +195,11 @@ body {
   0% { background: color-mix(in srgb, var(--ielts-accent) 70%, transparent); }
   100% { background: color-mix(in srgb, var(--ielts-accent) 28%, transparent); }
 }
+.passage ::selection { background: color-mix(in srgb, var(--ielts-accent) 35%, transparent); }
 
-/* During the drag itself (before the menu opens) the native selection paint is
- * translucent so existing highlights still show through instead of being
- * masked. */
-.passage ::selection {
-  background: color-mix(in srgb, var(--ielts-accent) 35%, transparent);
-}
-
-/* Inputs styled to match the flat IELTS look */
 .ielts-input {
   border: 1px solid var(--ielts-border);
+  border-radius: 2px;
   background: var(--ielts-bg);
   color: var(--ielts-fg);
   padding: 2px 6px;
@@ -133,74 +207,63 @@ body {
 }
 .ielts-input:focus {
   border-color: var(--ielts-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ielts-accent) 35%, transparent);
+  box-shadow: 0 0 0 1px var(--ielts-accent);
 }
+.ielts-gap { display: inline-block; min-width: 7.5rem; }
 
-/* Gap-fill inline blank */
-.ielts-gap {
-  display: inline-block;
-  min-width: 7.5rem;
-}
-
-/* ---- On-test answer review (after submit) ---- */
+/* On-test answer review */
 .rev-ok {
-  border-color: #16a34a !important;
-  box-shadow: inset 0 0 0 1px #16a34a;
+  border-color: #1e7d3c !important;
+  box-shadow: inset 0 0 0 1px #1e7d3c;
 }
 .rev-bad {
-  border-color: #dc2626 !important;
-  box-shadow: inset 0 0 0 1px #dc2626;
+  border-color: #c0392b !important;
+  box-shadow: inset 0 0 0 1px #c0392b;
   text-decoration: line-through;
 }
-.rev-tick { color: #16a34a; font-weight: 700; }
-.rev-cross { color: #dc2626; font-weight: 700; }
-.rev-correct {
-  color: #16a34a;
-  font-weight: 600;
-  white-space: nowrap;
-}
-/* Highlight the right option in a radio/checkbox list */
-.rev-opt-correct { color: #16a34a; font-weight: 600; }
-.rev-opt-wrong { color: #dc2626; text-decoration: line-through; }
+.rev-tick { color: #1e7d3c; font-weight: 700; }
+.rev-cross { color: #c0392b; font-weight: 700; }
+.rev-correct { color: #1e7d3c; font-weight: 600; white-space: nowrap; }
+.rev-opt-correct { color: #1e7d3c; font-weight: 600; }
+.rev-opt-wrong { color: #c0392b; text-decoration: line-through; }
 
-/* Passage paragraph letters */
-.passage-letter {
-  font-weight: 700;
-  margin-right: .4rem;
-}
-
-/* Reading passage typography */
-.passage p { margin: 0 0 .9rem; }
+.passage-letter { font-weight: 700; margin-right: .4rem; }
+.passage p { margin: 0 0 .9rem; line-height: 1.65; }
 .passage h3 { font-weight: 700; margin: 0 0 .6rem; }
-
-/* Hide native scrollbars styling tweak for panels */
 .ielts-scroll { scrollbar-width: thin; }
 
-/* Question-number nav button */
+/* Question palette: answered, current and review are deliberately distinct. */
 .qbtn {
   position: relative;
-  min-width: 2rem;
-  height: 1.9rem;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 5px;
   border: 1px solid var(--ielts-border);
+  border-radius: 2px;
   background: var(--ielts-bg);
   color: var(--ielts-fg);
-  font-size: .8rem;
+  font-size: 12px;
   line-height: 1;
+  cursor: pointer;
 }
-.qbtn[data-answered="true"] { font-weight: 700; }
-.qbtn[data-answered="true"]::after {
-  content: "";
-  position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px;
-  background: var(--ielts-accent);
+.qbtn:hover { border-color: var(--ielts-accent); }
+.qbtn[data-answered="true"] {
+  background: var(--ielts-fg);
+  color: var(--ielts-bg);
+  border-color: var(--ielts-fg);
+  font-weight: 700;
 }
 .qbtn[data-current="true"] {
   outline: 2px solid var(--ielts-accent);
-  outline-offset: -2px;
+  outline-offset: 1px;
 }
-.qbtn[data-flagged="true"]::before {
+.qbtn[data-flagged="true"]::after {
   content: "";
-  position: absolute; top: 0; right: 0;
-  border-width: 0 7px 7px 0;
-  border-style: solid;
-  border-color: transparent var(--ielts-flag) transparent transparent;
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-top: 9px solid var(--ielts-flag);
+  border-left: 9px solid transparent;
 }
