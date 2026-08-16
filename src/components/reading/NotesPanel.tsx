@@ -14,7 +14,9 @@ export default function NotesPanel({ onClose }: { onClose: () => void }) {
 
   const notes = useMemo(() => {
     if (!test?.reading) return []
-    const passageText = new Map(test.reading.passages.map((p) => [p.number, htmlToText(p.html)]))
+    const passageText = new Map<number, string>(
+      test.reading.passages.map((p) => [p.number, htmlToText(p.html)]),
+    )
     return highlights
       .filter((h) => h.note !== undefined)
       .map((h) => {
