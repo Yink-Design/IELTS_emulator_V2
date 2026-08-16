@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import { getSections, allQuestionNumbers } from '../lib/sections'
 import TopBar from '../components/shell/TopBar'
@@ -6,6 +6,7 @@ import BottomNav, { isAnswered } from '../components/shell/BottomNav'
 import ReadingTest from '../components/modules/ReadingTest'
 import ListeningTest from '../components/modules/ListeningTest'
 import WritingTest from '../components/modules/WritingTest'
+import NotesPanel from '../components/reading/NotesPanel'
 
 function ConfirmSubmit({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   const test = useStore((s) => s.test)
@@ -54,6 +55,17 @@ export default function TestRunner() {
   const submit = useStore((s) => s.submit)
   const reviewMode = useStore((s) => s.reviewMode)
   const [confirm, setConfirm] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+
+  useEffect(() => {
+    const openNotes = () => setNotesOpen(true)
+    window.addEventListener('ielts-open-notes', openNotes)
+    return () => window.removeEventListener('ielts-open-notes', openNotes)
+  }, [])
+
+  useEffect(() => {
+    if (module !== 'reading') setNotesOpen(false)
+  }, [module])
 
   const doSubmit = () => {
     setConfirm(false)
@@ -63,7 +75,7 @@ export default function TestRunner() {
 
   return (
     <>
-      <TopBar />
+      <TopBar notesOpen={notesOpen} onToggleNotes={() => setNotesOpen((v) => !v)} />
       {reviewMode && (
         <div
           className="shrink-0 px-4 py-1.5 text-sm font-bold border-b flex items-center gap-3"
@@ -72,10 +84,13 @@ export default function TestRunner() {
           <span>Review mode — your answers are marked <span className="rev-tick">✓</span> correct / <span className="rev-cross">✗</span> incorrect, with the right answer shown.</span>
         </div>
       )}
-      <main className="flex-1 min-h-0 flex flex-col">
-        {module === 'reading' && <ReadingTest />}
-        {module === 'listening' && <ListeningTest />}
-        {module === 'writing' && <WritingTest />}
+      <main className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          {module === 'reading' && <ReadingTest />}
+          {module === 'listening' && <ListeningTest />}
+          {module === 'writing' && <WritingTest />}
+        </div>
+        {module === 'reading' && notesOpen && <NotesPanel onClose={() => setNotesOpen(false)} />}
       </main>
       <BottomNav onSubmit={() => setConfirm(true)} />
       {confirm && <ConfirmSubmit onCancel={() => setConfirm(false)} onConfirm={doSubmit} />}
