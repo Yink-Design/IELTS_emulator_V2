@@ -3,10 +3,18 @@ import { useStore } from '../store'
 import { builtInTests } from '../data'
 import {
   downloadTemplate,
+  getImportMeta,
   loadImportedTests,
   parseTest,
   saveImportedTests,
 } from '../lib/importTest'
+import {
+  clearGithubConnection,
+  importFromGithubRepository,
+  loadGithubConnection,
+  saveGithubConnection,
+  type GithubConnectionRecord,
+} from '../lib/githubImport'
 import { clearSession, loadSession } from '../lib/session'
 import { formatClock } from '../lib/hooks'
 import type { IeltsTest, ModuleType } from '../types'
@@ -17,33 +25,43 @@ const MODULES: { key: ModuleType; label: string }[] = [
   { key: 'writing', label: 'Writing' },
 ]
 
-/** Number of questions (or tasks, for Writing) a test offers for a module,
- *  or null if the test does not include that module. */
 function moduleCount(test: IeltsTest, module: ModuleType): number | null {
   if (module === 'listening') return test.listening ? test.listening.parts.flatMap((p) => p.groups).flatMap((g) => g.questions).length : null
   if (module === 'reading') return test.reading ? test.reading.passages.flatMap((p) => p.groups).flatMap((g) => g.questions).length : null
   return test.writing ? test.writing.tasks.length : null
 }
 
+function Badge({ children, strong = false }: { children: React.ReactNode; strong?: boolean }) {
+  return (
+    <span
+      className="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 border"
+      style={{
+        borderColor: strong ? 'var(--ielts-accent)' : 'var(--ielts-border)',
+        color: strong ? 'var(--ielts-accent)' : 'inherit',
+        opacity: strong ? 1 : 0.72,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
 function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleType; onRemove?: () => void }) {
   const loadAndStart = useStore((s) => s.loadAndStart)
   const count = moduleCount(test, module)
+  const importMeta = getImportMeta(test)
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--ielts-border)' }}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-bold text-lg">{test.title}</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <span className="text-xs uppercase tracking-wide opacity-60">{test.category}</span>
-            {test.simplified && (
-              <span
-                className="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 border"
-                style={{ borderColor: 'var(--ielts-border)', opacity: 0.7 }}
-              >
-                Simplified
-              </span>
-            )}
+            {importMeta && <Badge strong>External</Badge>}
+            {importMeta?.cambridgeBook != null && <Badge strong>剑{importMeta.cambridgeBook}</Badge>}
+            {importMeta?.cambridgeTest != null && <Badge>Test {importMeta.cambridgeTest}</Badge>}
+            {test.simplified && <Badge>Simplified</Badge>}
           </div>
         </div>
         {onRemove && (
@@ -54,6 +72,9 @@ function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleT
       </div>
 
       {test.source && <p className="text-xs opacity-60 mt-1">{test.source}</p>}
+      {importMeta?.provider === 'github' && importMeta.repository && (
+        <p className="text-xs opacity-50 mt-1">Imported from {importMeta.repository}</p>
+      )}
 
       <div className="flex items-center gap-2 mt-3">
         <button
@@ -77,6 +98,12 @@ export default function Home() {
   const [showImport, setShowImport] = useState(false)
   const [session, setSession] = useState(() => loadSession())
   const [tab, setTab] = useState<ModuleType>('listening')
+  const [connection, setConnection] = useState<GithubConnectionRecord | null>(() => loadGithubConnection())
+  const [githubRepo, setGithubRepo] = useState(() => connection?.repository ?? 'Yink-Design/IELTS_database')
+  const [githubBranch, setGithubBranch] = useState(() => connection?.branch ?? 'master')
+  const [githubToken, setGithubToken] = useState('')
+  const [githubBusy, setGithubBusy] = useState(false)
+  const [githubMessage, setGithubMessage] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const resumeSession = useStore((s) => s.resumeSession)
 
@@ -84,12 +111,18 @@ export default function Home() {
     ? [...builtInTests, ...imported].find((t) => t.id === session.testId)
     : undefined
 
-  const addTest = (json: string) => {
+  const mergeImported = (tests: IeltsTest[]) => {
+    const ids = new Set(tests.map((test) => test.id))
+    const next = [...imported.filter((test) => !ids.has(test.id)), ...tests]
+    setImported(next)
+    saveImportedTests(next)
+    return next
+  }
+
+  const addTest = (json: string, path?: string) => {
     try {
-      const t = parseTest(json)
-      const next = [...imported.filter((x) => x.id !== t.id), t]
-      setImported(next)
-      saveImportedTests(next)
+      const test = parseTest(json, { provider: 'file', path })
+      mergeImported([test])
       setPaste('')
       setError(null)
       setShowImport(false)
@@ -107,8 +140,39 @@ export default function Home() {
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    file.text().then(addTest)
+    file.text().then((text) => addTest(text, file.name))
     e.target.value = ''
+  }
+
+  const onGithubImport = async () => {
+    if (githubBusy) return
+    setGithubBusy(true)
+    setError(null)
+    setGithubMessage(null)
+    try {
+      const result = await importFromGithubRepository(githubRepo, githubBranch, githubToken)
+      if (result.tests.length > 0) mergeImported(result.tests)
+
+      const record: GithubConnectionRecord = {
+        repository: githubRepo.trim(),
+        branch: githubBranch.trim() || 'master',
+        lastSyncAt: new Date().toISOString(),
+        recognizedTests: result.recognized,
+        importedTests: result.tests.length,
+      }
+      saveGithubConnection(record)
+      setConnection(record)
+
+      const missingText = result.missing.length > 0
+        ? ` ${result.missing.length} catalog entries are recognized but do not have emulator-ready JSON yet.`
+        : ''
+      setGithubMessage(`Recognized ${result.recognized} tests and imported ${result.tests.length}.${missingText} Token cleared.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'GitHub import failed.')
+    } finally {
+      setGithubToken('')
+      setGithubBusy(false)
+    }
   }
 
   return (
@@ -122,10 +186,8 @@ export default function Home() {
 
         <div className="border-l-4 p-3 my-5 text-sm" style={{ borderColor: 'var(--ielts-flag)', background: 'var(--ielts-panel)' }}>
           <strong>About the content.</strong> The bundled test is original material written for this
-          app (CC0) and is <em>not</em> affiliated with Cambridge or IELTS. Cambridge IELTS books are
-          copyrighted, so they are not included. Use the importer to load any test you legally own, and
-          add officially free practice material from <span className="font-mono">ielts.org</span>,
-          the British Council or IDP. Listening audio is spoken by your browser from a transcript.
+          app (CC0). External tests can be imported from JSON or from a private GitHub repository.
+          GitHub access tokens are used only for the current import attempt and are not saved by the app.
         </div>
 
         {session && sessionTest && (
@@ -165,7 +227,6 @@ export default function Home() {
 
         <h2 className="font-bold text-lg mt-6 mb-2">Tests</h2>
 
-        {/* Module tabs: each shows only the tests that include that module. */}
         <div className="flex border-b mb-3" style={{ borderColor: 'var(--ielts-border)' }}>
           {MODULES.map((m) => {
             const active = tab === m.key
@@ -215,7 +276,7 @@ export default function Home() {
               style={{ borderColor: 'var(--ielts-border)' }}
               onClick={() => setShowImport((v) => !v)}
             >
-              {showImport ? 'Close importer' : '+ Import a test (JSON)'}
+              {showImport ? 'Close importer' : '+ Import tests'}
             </button>
             <button
               className="px-3 py-1.5 border text-sm"
@@ -228,6 +289,81 @@ export default function Home() {
 
           {showImport && (
             <div className="border p-4 mt-3" style={{ borderColor: 'var(--ielts-border)' }}>
+              <h3 className="font-bold">Private GitHub repository</h3>
+              <p className="text-xs opacity-60 mt-1">
+                Reads <span className="font-mono">data/catalog.json</span>, imports every emulator-ready JSON it finds,
+                then clears the token. Repository/branch sync history is stored only in this browser.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-2 mt-3">
+                <label className="text-xs">
+                  Repository
+                  <input
+                    value={githubRepo}
+                    onChange={(e) => setGithubRepo(e.target.value)}
+                    className="block w-full border p-2 mt-1 text-sm font-mono"
+                    style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)', color: 'var(--ielts-fg)' }}
+                    placeholder="owner/repository"
+                  />
+                </label>
+                <label className="text-xs">
+                  Branch
+                  <input
+                    value={githubBranch}
+                    onChange={(e) => setGithubBranch(e.target.value)}
+                    className="block w-full border p-2 mt-1 text-sm font-mono"
+                    style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)', color: 'var(--ielts-fg)' }}
+                    placeholder="master"
+                  />
+                </label>
+              </div>
+
+              <label className="block text-xs mt-2">
+                Fine-grained PAT (Contents: read)
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="block w-full border p-2 mt-1 text-sm font-mono"
+                  style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)', color: 'var(--ielts-fg)' }}
+                  placeholder="github_pat_..."
+                />
+              </label>
+
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <button
+                  className="px-3 py-1.5 border text-sm font-semibold disabled:opacity-50"
+                  style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-accent)', color: 'var(--ielts-accent-fg)' }}
+                  onClick={onGithubImport}
+                  disabled={githubBusy}
+                >
+                  {githubBusy ? 'Connecting…' : 'Connect, recognize & import'}
+                </button>
+                {connection && (
+                  <button
+                    className="px-3 py-1.5 border text-xs"
+                    style={{ borderColor: 'var(--ielts-border)' }}
+                    onClick={() => {
+                      clearGithubConnection()
+                      setConnection(null)
+                    }}
+                  >
+                    Forget browser record
+                  </button>
+                )}
+              </div>
+
+              {connection && (
+                <p className="text-xs opacity-60 mt-2">
+                  This browser remembers {connection.repository}@{connection.branch}: {connection.recognizedTests} recognized,
+                  {' '}{connection.importedTests} imported on {new Date(connection.lastSyncAt).toLocaleString()}.
+                </p>
+              )}
+              {githubMessage && <p className="text-sm mt-2" style={{ color: 'var(--ielts-accent)' }}>{githubMessage}</p>}
+
+              <div className="border-t my-4" style={{ borderColor: 'var(--ielts-border)' }} />
+
               <label className="block text-sm font-semibold mb-1">Upload a .json file</label>
               <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} className="text-sm" />
 
@@ -238,7 +374,7 @@ export default function Home() {
                 spellCheck={false}
                 className="w-full h-40 border p-2 font-mono text-xs"
                 style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-bg)', color: 'var(--ielts-fg)' }}
-                placeholder='{ "id": "...", "title": "...", "reading": { ... } }'
+                placeholder='{ "id": "cambridge-18-academic-1", "title": "Cambridge IELTS 18 Academic Test 1", ... }'
               />
               <div className="flex gap-2 mt-2">
                 <button
@@ -246,7 +382,7 @@ export default function Home() {
                   style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-accent)', color: 'var(--ielts-accent-fg)' }}
                   onClick={() => addTest(paste)}
                 >
-                  Import
+                  Import JSON
                 </button>
               </div>
               {error && <p className="text-rose-500 text-sm mt-2">{error}</p>}
