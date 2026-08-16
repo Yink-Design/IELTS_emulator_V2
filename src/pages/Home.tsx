@@ -10,6 +10,7 @@ import {
 import { clearSession, loadSession } from '../lib/session'
 import { formatClock } from '../lib/hooks'
 import { getPracticeTimerSnapshot, getRunMode, startRunContext, type RunMode } from '../lib/runMode'
+import QuestionBankPanel from '../components/bank/QuestionBankPanel'
 import type { IeltsTest, ModuleType } from '../types'
 
 const MODULES: { key: ModuleType; label: string }[] = [
@@ -31,11 +32,7 @@ function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleT
   const start = (mode: RunMode) => {
     startRunContext(test.id, module, mode)
     loadAndStart(test, module)
-    if (mode === 'practice') {
-      // Practice mode is untimed: remove the exam countdown/auto-submit deadline.
-      // Progress and the positive timer are persisted separately.
-      useStore.setState({ endsAt: null })
-    }
+    if (mode === 'practice') useStore.setState({ endsAt: null })
   }
 
   return (
@@ -94,6 +91,7 @@ function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleT
 
 export default function Home() {
   const [imported, setImported] = useState<IeltsTest[]>(() => loadImportedTests())
+  const [bankTests, setBankTests] = useState<IeltsTest[]>([])
   const [paste, setPaste] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -102,8 +100,12 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null)
   const resumeSession = useStore((s) => s.resumeSession)
 
+  const rememberBankTest = (test: IeltsTest) => {
+    setBankTests((current) => [...current.filter((t) => t.id !== test.id), test])
+  }
+
   const sessionTest = session
-    ? [...builtInTests, ...imported].find((t) => t.id === session.testId)
+    ? [...builtInTests, ...imported, ...bankTests].find((t) => t.id === session.testId)
     : undefined
   const sessionMode = session ? getRunMode() : 'mock'
   const practiceSnapshot = sessionMode === 'practice' ? getPracticeTimerSnapshot(session?.activeSection ?? 0) : null
@@ -144,11 +146,8 @@ export default function Home() {
         </p>
 
         <div className="border-l-4 p-3 my-5 text-sm" style={{ borderColor: 'var(--ielts-flag)', background: 'var(--ielts-panel)' }}>
-          <strong>About the content.</strong> The bundled test is original material written for this
-          app (CC0) and is <em>not</em> affiliated with Cambridge or IELTS. Cambridge IELTS books are
-          copyrighted, so they are not included. Use the importer to load any test you legally own, and
-          add officially free practice material from <span className="font-mono">ielts.org</span>,
-          the British Council or IDP. Listening audio is spoken by your browser from a transcript.
+          <strong>Test content is separate from the simulator.</strong> The bundled demo is original CC0 material.
+          Your own test bank can be loaded from a private GitHub repository, while the simulator remains public on GitHub Pages.
         </div>
 
         {session && sessionTest && (
@@ -192,6 +191,12 @@ export default function Home() {
           </div>
         )}
 
+        {session && !sessionTest && (
+          <div className="border p-3 my-5 text-sm" style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-panel)' }}>
+            A saved test is waiting to resume. If it came from the private question bank, connect the bank below; the Resume card will appear automatically after that test is loaded.
+          </div>
+        )}
+
         <h2 className="font-bold text-lg mt-6 mb-2">Tests</h2>
 
         <div className="flex border-b mb-3" style={{ borderColor: 'var(--ielts-border)' }}>
@@ -217,13 +222,7 @@ export default function Home() {
         {(() => {
           const builtIn = builtInTests.filter((t) => moduleCount(t, tab) != null)
           const userTests = imported.filter((t) => moduleCount(t, tab) != null)
-          if (builtIn.length === 0 && userTests.length === 0) {
-            return (
-              <p className="text-sm opacity-60">
-                No tests include a {MODULES.find((m) => m.key === tab)?.label} module yet. Import one below.
-              </p>
-            )
-          }
+          if (builtIn.length === 0 && userTests.length === 0) return null
           return (
             <div className="grid gap-3">
               {builtIn.map((t) => (
@@ -236,6 +235,8 @@ export default function Home() {
           )
         })()}
 
+        <QuestionBankPanel module={tab} onLoadedTest={rememberBankTest} />
+
         <div className="mt-6">
           <div className="flex gap-2">
             <button
@@ -243,7 +244,7 @@ export default function Home() {
               style={{ borderColor: 'var(--ielts-border)' }}
               onClick={() => setShowImport((v) => !v)}
             >
-              {showImport ? 'Close importer' : '+ Import a test (JSON)'}
+              {showImport ? 'Close importer' : '+ Import a local test (JSON)'}
             </button>
             <button
               className="px-3 py-1.5 border text-sm"
