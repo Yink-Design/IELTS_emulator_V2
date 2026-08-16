@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store'
 import { asset } from '../../lib/asset'
 import { buildPlayScript, VOICE_MAP } from '../../lib/listeningScript'
+import { getListeningProgress, saveListeningProgress } from '../../lib/runMode'
 import type { ListeningPart } from '../../types'
 
 type Mode = 'audio' | 'tts' | 'none'
 
-/** Prefer a British English voice, then any English, else the default. */
 function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   return (
     voices.find((v) => v.lang === 'en-GB') ??
@@ -15,12 +15,6 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null 
   )
 }
 
-/**
- * Resolve the available voices. On a freshly-loaded origin Chrome returns an
- * empty list until the async `voiceschanged` event fires; calling speak()
- * before then silently drops the utterance. Wait for it (with a timeout so we
- * never hang) so the first part is audible on a cold page load.
- */
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   const synth = window.speechSynthesis
   const ready = synth.getVoices()
@@ -39,23 +33,22 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
 
 /**
  * Listening audio that mimics the exam: it plays once automatically and cannot
- * be paused or rewound. Parent must mount this with key={partIndex} so each
- * part starts fresh.
- *
- * Source priority: a real `audio` file if the part has one; if that is absent
- * or fails to load, it falls back to reading `transcript` aloud with the Web
- * Speech API so the simulator always has audio.
+ * be paused or rewound. For real audio files, the current playback position is
+ * saved locally so an accidental close/reload can resume from the same point.
  */
 export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; onEnded: () => void }) {
   const volume = useStore((s) => s.volume)
+  const testId = useStore((s) => s.test?.id ?? '')
   const audioRef = useRef<HTMLAudioElement>(null)
   const onEndedRef = useRef(onEnded)
   onEndedRef.current = onEnded
-  const ttsActive = useRef(false) // guards the sentence queue against stale resumes
-  const startedRef = useRef(false) // true once an utterance actually begins speaking
+  const ttsActive = useRef(false)
+  const startedRef = useRef(false)
+  const audioStartedRef = useRef(false)
 
   const hasTTS = !!part.transcript && 'speechSynthesis' in window
   const initialMode: Mode = part.audio ? 'audio' : hasTTS ? 'tts' : 'none'
+  const resumeAt = testId ? getListeningProgress(testId, part.number) : 0
 
   const [mode, setMode] = useState<Mode>(initialMode)
   const [progress, setProgress] = useState(0)
@@ -63,6 +56,8 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
   const [needsGesture, setNeedsGesture] = useState(false)
 
   const finish = () => {
+    const a = audioRef.current
+    if (testId && a?.duration) saveListeningProgress(testId, part.number, a.duration)
     setProgress(1)
     setPlaying(false)
     onEndedRef.current()
@@ -73,12 +68,7 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
     const synth = window.speechSynthesis
     synth.cancel()
 
-    // Exam-style script: section instructions, a reading pause, the recording
-    // with a distinct voice per speaker, and an end-of-section pause. Each
-    // speech segment is split into sentences and queued (Chrome silently
-    // truncates a single long utterance ~15s).
     const segments = buildPlayScript(part)
-    // Flatten into a queue of items the speaker loop walks through.
     type Item = { kind: 'speech'; text: string; pitch: number } | { kind: 'pause'; ms: number }
     const queue: Item[] = []
     for (const seg of segments) {
@@ -99,8 +89,6 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
     setNeedsGesture(false)
     setPlaying(true)
 
-    // Wait for voices before speaking (empty on a cold origin), then walk the
-    // queue: speak each sentence with its speaker's pitch; honour pauses.
     loadVoices().then((voices) => {
       if (!ttsActive.current) return
       const voice = pickVoice(voices)
@@ -120,8 +108,8 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
         }
         const u = new SpeechSynthesisUtterance(item.text)
         u.volume = volume
-        u.rate = 0.95 // a touch under natural so it stays followable
-        u.pitch = item.pitch // distinguishes speakers when only one voice exists
+        u.rate = 0.95
+        u.pitch = item.pitch
         u.lang = 'en-GB'
         if (voice) u.voice = voice
         u.onstart = () => {
@@ -130,7 +118,7 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
         }
         u.onend = () => {
           i++
-          setTimeout(next, 250) // brief gap between sentences
+          setTimeout(next, 250)
         }
         u.onerror = () => {
           i++
@@ -145,31 +133,42 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
 
   const startAudio = () => {
     const a = audioRef.current
-    if (!a) return
+    if (!a || audioStartedRef.current) return
+
+    if (Number.isFinite(a.duration) && a.duration > 0) {
+      if (resumeAt >= a.duration - 0.25) {
+        a.currentTime = a.duration
+        setProgress(1)
+        setPlaying(false)
+        audioStartedRef.current = true
+        return
+      }
+      if (resumeAt > 0) a.currentTime = Math.min(resumeAt, Math.max(0, a.duration - 0.25))
+    }
+
     a.volume = volume
+    audioStartedRef.current = true
     a.play()
       .then(() => {
         setNeedsGesture(false)
         setPlaying(true)
       })
-      .catch(() => setNeedsGesture(true)) // autoplay blocked — show a Play button
+      .catch(() => {
+        audioStartedRef.current = false
+        setNeedsGesture(true)
+      })
   }
 
-  /** Real audio file missing or unreadable → use speech synthesis if we can. */
   const fallback = () => {
     if (hasTTS) startTTS()
     else setMode('none')
   }
 
-  // Start playback on mount (fresh per part via key).
   useEffect(() => {
     setProgress(0)
-    if (initialMode === 'audio') {
-      startAudio()
-    } else if (initialMode === 'tts') {
+    audioStartedRef.current = false
+    if (initialMode === 'tts') {
       startTTS()
-      // If nothing actually started speaking (autoplay blocked, or voices
-      // never loaded), surface a Play button instead of leaving it silent.
       const t = setTimeout(() => {
         if (!startedRef.current) setNeedsGesture(true)
       }, 2500)
@@ -178,9 +177,8 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
         ttsActive.current = false
         window.speechSynthesis.cancel()
       }
-    } else {
-      setMode('none')
     }
+    if (initialMode === 'none') setMode('none')
     return () => {
       ttsActive.current = false
       if ('speechSynthesis' in window) window.speechSynthesis.cancel()
@@ -231,9 +229,24 @@ export default function AudioPlayer({ part, onEnded }: { part: ListeningPart; on
         <audio
           ref={audioRef}
           src={asset(part.audio)}
+          onLoadedMetadata={(e) => {
+            const a = e.currentTarget
+            if (a.duration && resumeAt > 0) {
+              if (resumeAt >= a.duration - 0.25) {
+                a.currentTime = a.duration
+                setProgress(1)
+                audioStartedRef.current = true
+                return
+              }
+              a.currentTime = Math.min(resumeAt, Math.max(0, a.duration - 0.25))
+              setProgress(a.currentTime / a.duration)
+            }
+            startAudio()
+          }}
           onTimeUpdate={(e) => {
             const a = e.currentTarget
             if (a.duration) setProgress(a.currentTime / a.duration)
+            if (testId) saveListeningProgress(testId, part.number, a.currentTime)
           }}
           onEnded={finish}
           onError={fallback}
