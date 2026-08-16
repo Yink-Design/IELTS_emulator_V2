@@ -9,6 +9,7 @@ import {
 } from '../lib/importTest'
 import { clearSession, loadSession } from '../lib/session'
 import { formatClock } from '../lib/hooks'
+import { getPracticeTimerSnapshot, getRunMode, startRunContext, type RunMode } from '../lib/runMode'
 import type { IeltsTest, ModuleType } from '../types'
 
 const MODULES: { key: ModuleType; label: string }[] = [
@@ -17,8 +18,6 @@ const MODULES: { key: ModuleType; label: string }[] = [
   { key: 'writing', label: 'Writing' },
 ]
 
-/** Number of questions (or tasks, for Writing) a test offers for a module,
- *  or null if the test does not include that module. */
 function moduleCount(test: IeltsTest, module: ModuleType): number | null {
   if (module === 'listening') return test.listening ? test.listening.parts.flatMap((p) => p.groups).flatMap((g) => g.questions).length : null
   if (module === 'reading') return test.reading ? test.reading.passages.flatMap((p) => p.groups).flatMap((g) => g.questions).length : null
@@ -28,6 +27,16 @@ function moduleCount(test: IeltsTest, module: ModuleType): number | null {
 function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleType; onRemove?: () => void }) {
   const loadAndStart = useStore((s) => s.loadAndStart)
   const count = moduleCount(test, module)
+
+  const start = (mode: RunMode) => {
+    startRunContext(test.id, module, mode)
+    loadAndStart(test, module)
+    if (mode === 'practice') {
+      // Practice mode is untimed: remove the exam countdown/auto-submit deadline.
+      // Progress and the positive timer are persisted separately.
+      useStore.setState({ endsAt: null })
+    }
+  }
 
   return (
     <div className="border p-4" style={{ borderColor: 'var(--ielts-border)' }}>
@@ -55,16 +64,29 @@ function TestCard({ test, module, onRemove }: { test: IeltsTest; module: ModuleT
 
       {test.source && <p className="text-xs opacity-60 mt-1">{test.source}</p>}
 
-      <div className="flex items-center gap-2 mt-3">
+      <div className="flex flex-wrap items-center gap-2 mt-3">
         <button
-          onClick={() => loadAndStart(test, module)}
+          onClick={() => start('practice')}
           className="px-3 py-1.5 border text-sm font-semibold"
           style={{ borderColor: 'var(--ielts-border)', background: 'var(--ielts-accent)', color: 'var(--ielts-accent-fg)' }}
+          title="Untimed practice with count-up timers"
         >
-          Start {MODULES.find((m) => m.key === module)?.label}
+          Practice
         </button>
-        {module !== 'writing' && <span className="text-sm opacity-60">{count} questions</span>}
-        {module === 'writing' && <span className="text-sm opacity-60">{count} tasks</span>}
+        <button
+          onClick={() => start('mock')}
+          className="px-3 py-1.5 border text-sm font-semibold"
+          style={{ borderColor: 'var(--ielts-border)' }}
+          title="Exam-style countdown and automatic submission"
+        >
+          Mock test
+        </button>
+        <span className="text-sm opacity-60">
+          {count} {module === 'writing' ? 'tasks' : 'questions'}
+        </span>
+      </div>
+      <div className="text-xs opacity-55 mt-2">
+        Practice uses positive timers by Part/Passage. Mock test keeps the exam countdown and strict timing.
       </div>
     </div>
   )
@@ -83,6 +105,8 @@ export default function Home() {
   const sessionTest = session
     ? [...builtInTests, ...imported].find((t) => t.id === session.testId)
     : undefined
+  const sessionMode = session ? getRunMode() : 'mock'
+  const practiceSnapshot = sessionMode === 'practice' ? getPracticeTimerSnapshot(session?.activeSection ?? 0) : null
 
   const addTest = (json: string) => {
     try {
@@ -116,8 +140,7 @@ export default function Home() {
       <div className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-bold">IELTS on Computer — Practice Simulator</h1>
         <p className="opacity-70 mt-1">
-          A faithful re-creation of the computer-delivered IELTS test environment: timed Listening,
-          Reading and Writing modules, the same navigation, highlighter, settings and review tools.
+          Practice in an IELTS-style computer test environment, or switch to a strict timed mock test.
         </p>
 
         <div className="border-l-4 p-3 my-5 text-sm" style={{ borderColor: 'var(--ielts-flag)', background: 'var(--ielts-panel)' }}>
@@ -134,11 +157,17 @@ export default function Home() {
             style={{ borderColor: 'var(--ielts-accent)', background: 'var(--ielts-panel)' }}
           >
             <div>
-              <div className="font-bold">Resume your test in progress</div>
+              <div className="font-bold">Resume saved progress</div>
               <div className="text-sm opacity-70">
-                {sessionTest.title} — {session.module}
-                {session.endsAt != null &&
-                  ` · ${formatClock(Math.max(0, Math.round((session.endsAt - Date.now()) / 1000)))} left`}
+                {sessionTest.title} — {session.module} · {sessionMode === 'practice' ? 'Practice' : 'Mock test'}
+                {sessionMode === 'practice' && practiceSnapshot
+                  ? ` · ${formatClock(practiceSnapshot.totalSec)} elapsed`
+                  : session.endsAt != null
+                    ? ` · ${formatClock(Math.max(0, Math.round((session.endsAt - Date.now()) / 1000)))} left`
+                    : ''}
+              </div>
+              <div className="text-xs opacity-55 mt-1">
+                Answers, Review flags, writing and reading annotations are saved automatically in this browser.
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -165,7 +194,6 @@ export default function Home() {
 
         <h2 className="font-bold text-lg mt-6 mb-2">Tests</h2>
 
-        {/* Module tabs: each shows only the tests that include that module. */}
         <div className="flex border-b mb-3" style={{ borderColor: 'var(--ielts-border)' }}>
           {MODULES.map((m) => {
             const active = tab === m.key
