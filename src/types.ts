@@ -99,13 +99,14 @@ export interface WritingTask {
 export type QuestionType =
   | 'mcq-single' // radio, one answer
   | 'mcq-multi' // checkboxes, choose N
-  | 'gap-fill' // standalone short-answer completion lines
+  | 'gap-fill' // standalone sentence completion / short completion lines
   | 'inline-gap' // gaps embedded in bodyHtml (notes / summary / form / table / flow-chart)
+  | 'diagram-completion' // free-text labels based on a diagram/image
   | 'tfng' // True / False / Not Given
   | 'ynng' // Yes / No / Not Given
-  | 'matching' // match prompts to a shared bank (features, endings, paragraphs)
+  | 'matching' // match prompts to a shared bank (information, features, endings)
   | 'matching-headings' // match headings to paragraphs
-  | 'map-labeling' // label a map / plan / diagram from a bank
+  | 'map-labeling' // label a map / plan / diagram from a supplied option bank
   | 'short-answer' // answer a question in N words
 
 export interface Option {
@@ -122,7 +123,7 @@ export interface QuestionGroup {
   wordLimit?: string
   /** Shared option bank (matching / map-labeling / matching-headings). */
   options?: Option[]
-  /** Map / plan / diagram image for map-labeling. */
+  /** Map / plan / diagram image. Private-bank images may use bank://assets/... */
   imageUrl?: string
   /**
    * For inline-gap groups: body HTML containing {{n}} placeholders that are
@@ -134,7 +135,7 @@ export interface QuestionGroup {
 
 export interface Question {
   number: number // global 1..40
-  /** Stem text. Omitted for inline-gap (the gap sits in bodyHtml). */
+  /** Stem/label text. Omitted for inline-gap if the gap sits in bodyHtml. */
   text?: string
   /** Per-question options (mcq). */
   options?: Option[]
