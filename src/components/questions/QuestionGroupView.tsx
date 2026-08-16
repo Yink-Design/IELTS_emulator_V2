@@ -38,6 +38,20 @@ function Instructions({ group }: { group: QuestionGroup }) {
   )
 }
 
+function GroupImage({ group, alt }: { group: QuestionGroup; alt: string }) {
+  if (!group.imageUrl) return null
+  return (
+    <div className="mb-4">
+      <img
+        src={asset(group.imageUrl)}
+        alt={alt}
+        className="max-w-full h-auto border"
+        style={{ borderColor: 'var(--ielts-border)' }}
+      />
+    </div>
+  )
+}
+
 /** Shared option bank shown above matching / heading / map questions. */
 function OptionBank({ title, options }: { title: string; options: Option[] }) {
   return (
@@ -88,7 +102,7 @@ function MultiSelect({ group }: { group: QuestionGroup }) {
   const setAnswerMany = useStore((s) => s.setAnswerMany)
   const goToQuestion = useStore((s) => s.goToQuestion)
   const review = useReview()
-  const max = nums.length
+  const max = group.questions[0]?.maxSelect ?? nums.length
   const options = group.options ?? []
 
   const toggle = (v: string) => {
@@ -97,8 +111,6 @@ function MultiSelect({ group }: { group: QuestionGroup }) {
     else if (value.length < max) setAnswerMany(nums, [...value, v])
   }
 
-  // Correct letters for this group = the union of accepted answers across its
-  // question numbers (the key stores them per number).
   const correctSet = new Set(
     review.reviewMode
       ? nums.flatMap((n) => {
@@ -141,7 +153,7 @@ function MultiSelect({ group }: { group: QuestionGroup }) {
       </div>
       {review.reviewMode ? (
         <div className="text-xs mt-1 font-semibold">
-          {gotCount} of {max} marks
+          {gotCount} of {nums.length} marks
         </div>
       ) : (
         <div className="text-xs opacity-60 mt-1">
@@ -197,7 +209,6 @@ function GroupBody({ group }: { group: QuestionGroup }) {
       )
 
     case 'mcq-multi':
-      // The whole group shares one checkbox set; anchor it on the first number.
       return (
         <div id={`q${group.questions[0]?.number}`} className="scroll-mt-4">
           <MultiSelect group={group} />
@@ -250,9 +261,7 @@ function GroupBody({ group }: { group: QuestionGroup }) {
     case 'map-labeling':
       return (
         <>
-          {group.imageUrl && (
-            <img src={asset(group.imageUrl)} alt="Map or plan to label" className="max-w-full border mb-3" style={{ borderColor: 'var(--ielts-border)' }} />
-          )}
+          <GroupImage group={group} alt="Map or plan to label" />
           {group.options && <OptionBank title="Options" options={group.options} />}
           {group.questions.map((q) => (
             <QuestionShell key={q.number} n={q.number} evidence={q.evidence}>
@@ -265,9 +274,22 @@ function GroupBody({ group }: { group: QuestionGroup }) {
         </>
       )
 
+    case 'diagram-completion':
+      return (
+        <>
+          <GroupImage group={group} alt="Diagram to complete" />
+          {group.questions.map((q) => (
+            <QuestionShell key={q.number} n={q.number} evidence={q.evidence}>
+              {q.text ? <StemWithBlank text={q.text} n={q.number} /> : <GapInput n={q.number} width="10rem" />}
+            </QuestionShell>
+          ))}
+        </>
+      )
+
     case 'inline-gap':
       return (
         <div className="ielts-inline-gap">
+          <GroupImage group={group} alt="Question illustration" />
           {group.bodyHtml && <InlineGapBody group={group} />}
         </div>
       )
