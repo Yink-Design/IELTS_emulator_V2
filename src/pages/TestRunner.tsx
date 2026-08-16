@@ -67,6 +67,16 @@ export default function TestRunner() {
     if (module !== 'reading') setNotesOpen(false)
   }, [module])
 
+  useEffect(() => {
+    if (reviewMode) return
+    const warnBeforeLeaving = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [reviewMode])
+
   const doSubmit = () => {
     setConfirm(false)
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()
